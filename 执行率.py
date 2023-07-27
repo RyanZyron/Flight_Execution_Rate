@@ -14,9 +14,13 @@ warning_airports = ['北京', '首都',' 大兴', '上海', '浦东', '虹桥', 
                     '海口', '乌鲁木齐', '天津', '贵阳', '哈尔滨', '沈阳', '三亚', '大连', '济南', '南宁', '兰州',
                     '福州', '太原', '长春', '南昌', '呼和浩特', '呼和']
 def main():
+    # 读取数据的时候的位置要自己修改部分，最好对应到自己的目录
     time_calculate = pd.read_excel('/Users/ze/Desktop/23S执行率计算表.xlsx', sheet_name=1)
+    #  把班期的那一列转化成文本形式
     time_calculate[['班期']] = time_calculate[['班期']].astype(str)
+    #  遍历读取每一行，从第二行的取消数据开始读，第一行是标题
     for i in rng.value[1:]:  # 遍历从第二行开始的每一行，到最后一行
+        #  如果航班号的选取数据不在航班号的主列表里面，那就会打印出来并且跳过
         if i[2][0:6] not in flight_list:
             print(i[2][0:6])
             continue
@@ -443,7 +447,6 @@ def main():
     worksheet1.range('P3').value = time_calculate_list
     workbook.save()
     read_result()
-
 def month_main(d_list, month, flightnumber, statement):
     month = str(month) + "月"
     worksheet_month = workbook.sheets[month]
@@ -1010,7 +1013,6 @@ def foc_month_main(month, date_1, dict):
         else:
             if dict[b][0] == 2:
                 cell.value = [1]
-
 
 def part2(month, date_1, dict):
     month = str(month) + "月"
