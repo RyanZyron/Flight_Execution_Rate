@@ -24,9 +24,11 @@ def main():
         if i[2][0:6] not in flight_list:
             print(i[2][0:6])
             continue
-        if len(i[2]) <= 6:  # 航班号类似GJ8888
+        if len(i[2]) <= 6:  # 航班号类似CA8888 航班取消是6位的属性，但是具体需要更俊自身公司代码来评估
             if len(i[3]) > 10:  # 日期拆分
+                #  用 “-”进行分隔开，所以如果符号改了是需要进行替换的
                 startDay = i[3].split('-')[0]
+                #  日期使用.进行表示的，例如2023.07.08这样的形式，进行识别
                 startDay = datetime.strptime(startDay, "%Y.%m.%d")
                 endDay = i[3].split('-')[1]
                 year = startDay.year
@@ -51,7 +53,7 @@ def main():
                     if x.weekday() == c:
                         d.append(x)
             d_list = [datetime.date(x).month for x in d]
-            for d_month in range(1, 13):
+            for d_month in range(1, 13): # 遍历第1-12月
                 if d_list.count(d_month) == 0:  # 如果每个月的数字是0，就忽略
                     continue
                 else:
@@ -452,7 +454,7 @@ def month_main(d_list, month, flightnumber, statement):
     worksheet_month = workbook.sheets[month]
     flight_list_month = worksheet_month.range('A3').expand('down').value  # 时刻正表里的航班号，保持更新
     time_list_month = workbook.sheets[month].range('A1').expand('table').value[0][4:-2]  # 时刻表里的时间日期，换季了再更新！平时不要动
-    if len(flightnumber) <= 6:  # 航班号类似GJ8888
+    if len(flightnumber) <= 6:  # 航班号类似CA8888
         if flightnumber in flight_list_month:
             for b in d_list:
                 cell = worksheet_month.range('D2').offset(column_offset=time_list_month.index(b) + 1,
@@ -605,7 +607,7 @@ def read_result():
     for i in rng.value[1:]:  # 遍历从第二行开始的每一行，到最后一行
         if i[2][0:6] not in flight_list:
             continue
-        if len(i[2]) <= 6:  # 航班号类似GJ8888
+        if len(i[2]) <= 6:  # 航班号类似CA8888
             if len(i[3]) > 10:  # 日期拆分
                 startDay = i[3].split('-')[0]
                 startDay = datetime.strptime(startDay, "%Y.%m.%d")
