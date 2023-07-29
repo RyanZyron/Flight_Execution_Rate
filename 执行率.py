@@ -52,6 +52,7 @@ def main():
                         c = int(a) - 1
                     if x.weekday() == c:
                         d.append(x)
+            #  d 列表合集完成 下面依次处理合集 d列表包含一条状态里的所有日期
             d_list = [datetime.date(x).month for x in d]
             for d_month in range(1, 13): # 遍历第1-12月
                 if d_list.count(d_month) == 0:  # 如果每个月的数字是0，就忽略
@@ -61,7 +62,8 @@ def main():
                     for x_1 in d:
                         if datetime.date(x_1).month == d_month:
                             d_1.append(x_1)
-                    month_main(d_1, d_month, i[2], i[6])
+                    month_main(d_1, d_month, i[2], i[6])  # 把参数依次传入 第一个是包含了该月的所有日期的列表，第二个是月份数字 传入航班号，传入该航班的状态
+                    #  进行月份处理
             for datetime_everyday in d:
                 everyday = str(datetime_everyday.weekday()+1)
                 if i[6] == "取消":
