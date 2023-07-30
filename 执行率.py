@@ -65,8 +65,13 @@ def main():
                     month_main(d_1, d_month, i[2], i[6])  # 把参数依次传入 第一个是包含了该月的所有日期的列表，第二个是月份数字 传入航班号，传入该航班的状态
                     #  进行月份处理
             for datetime_everyday in d:
+                #  把D列表里的每一个日期都依次遍历，然后开始处理
                 everyday = str(datetime_everyday.weekday()+1)
+                #  这个是班期
                 if i[6] == "取消":
+                    # 锁定航班号这一列里的内容等于你正在更改的这条数据里的航班号
+                    # 同时满足所有空白列里的数字先转换成字符串，看字符串是否包含这个班期的
+                    # 满足上述条件后，因为是取消，所以转成0
                     time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
                         time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 0
                 elif i[6] == "取前":
