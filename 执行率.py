@@ -95,8 +95,9 @@ def main():
                 elif i[6] == "还原":
                     time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
                         time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 1
-
+                #  分成取消、取前、取后、拉直等一系列情况
         elif len(i[2]) == 8:
+            # 当航班号出现CA1777/8这样的形式，字符串长度变成了8，就要进行拆分
             if len(i[3]) > 10:  # 日期拆分
                 startDay = i[3].split('-')[0]
                 startDay = datetime.strptime(startDay, "%Y.%m.%d")
@@ -185,6 +186,7 @@ def main():
                     time_calculate.loc[(time_calculate.航班号 == i[2][0:5]+i[2][7]) & (
                         time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 1
         elif len(i[2]) == 9:
+            # 当航班号出现CA1769/70这样的形式，字符串长度变成了8，就要进行拆分
             if len(i[3]) > 10:  # 日期拆分
                 startDay = i[3].split('-')[0]
                 startDay = datetime.strptime(startDay, "%Y.%m.%d")
@@ -275,6 +277,7 @@ def main():
 
 
         elif len(i[2]) == 10:
+            # 当航班号出现CA1799/800这样的形式，字符串长度变成了8，就要进行拆分
             if len(i[3]) > 10:  # 日期拆分
                 startDay = i[3].split('-')[0]
                 startDay = datetime.strptime(startDay, "%Y.%m.%d")
@@ -365,6 +368,7 @@ def main():
 
 
         elif len(i[2]) == 11:
+            # 当航班号出现CA1799/1800这样的形式，字符串长度变成了8，就要进行拆分
             if len(i[3]) > 10:  # 日期拆分
                 startDay = i[3].split('-')[0]
                 startDay = datetime.strptime(startDay, "%Y.%m.%d")
