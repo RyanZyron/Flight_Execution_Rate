@@ -13,152 +13,87 @@ warning_airports = ['北京', '首都',' 大兴', '上海', '浦东', '虹桥', 
                     '天府', '双流', '深圳', '昆明', '西安', '重庆', '杭州', '南京', '郑州', '厦门', '武汉', '长沙', '青岛',
                     '海口', '乌鲁木齐', '天津', '贵阳', '哈尔滨', '沈阳', '三亚', '大连', '济南', '南宁', '兰州',
                     '福州', '太原', '长春', '南昌', '呼和浩特', '呼和']
-def main():
-    # 读取数据的时候的位置要自己修改部分，最好对应到自己的目录
-    time_calculate = pd.read_excel('/Users/ze/Desktop/23S执行率计算表.xlsx', sheet_name=1)
-    #  把班期的那一列转化成文本形式
-    time_calculate[['班期']] = time_calculate[['班期']].astype(str)
-    #  遍历读取每一行，从第二行的取消数据开始读，第一行是标题
-    for i in rng.value[1:]:  # 遍历从第二行开始的每一行，到最后一行
-        #  如果航班号的选取数据不在航班号的主列表里面，那就会打印出来并且跳过
-        if i[2][0:6] not in flight_list:
-            print(i[2][0:6])
+
+def handle_row(i:object):
+    if len(i[3]) > 10:  # 日期拆分
+        startDay = i[3].split('-')[0]
+        startDay = datetime.strptime(startDay, "%Y.%m.%d")
+        endDay = i[3].split('-')[1]
+        year = startDay.year
+        if len(endDay) <= 5:  # 出现日期类似3.12，却没有加上年的后半部分
+            endDay = str(year) + str(".") + endDay
+            endDay = datetime.strptime(endDay, "%Y.%m.%d")
+        elif len(endDay) >= 6:
+            endDay = datetime.strptime(endDay, "%Y.%m.%d")
+    elif len(i[3]) <= 10:
+        startDay = i[3]
+        startDay = datetime.strptime(startDay, "%Y.%m.%d")
+        endDay = i[3]
+        endDay = datetime.strptime(endDay, "%Y.%m.%d")
+    t = pd.date_range(start=startDay, end=endDay, freq="D")
+    d = []
+    for x in t:
+        for a in str(i[4]):
+            if a == ".":
+                continue
+            else:
+                c = int(a) - 1
+            if x.weekday() == c:
+                d.append(x)
+    d_list = [datetime.date(x).month for x in d]
+    for d_month in range(1, 13):
+        if d_list.count(d_month) == 0:  # 如果每个月的数字是0，就忽略
             continue
-        if len(i[2]) <= 6:  # 航班号类似CA8888 航班取消是6位的属性，但是具体需要更俊自身公司代码来评估
-            if len(i[3]) > 10:  # 日期拆分
-                #  用 “-”进行分隔开，所以如果符号改了是需要进行替换的
-                startDay = i[3].split('-')[0]
-                #  日期使用.进行表示的，例如2023.07.08这样的形式，进行识别
-                startDay = datetime.strptime(startDay, "%Y.%m.%d")
-                endDay = i[3].split('-')[1]
-                year = startDay.year
-                if len(endDay) <= 5:  # 出现日期类似3.12，却没有加上年的后半部分
-                    endDay = str(year)+str(".")+endDay
-                    endDay = datetime.strptime(endDay, "%Y.%m.%d")
-                elif len(endDay) >= 6:
-                    endDay = datetime.strptime(endDay, "%Y.%m.%d")
-            elif len(i[3]) <= 10:
-                startDay = i[3]
-                startDay = datetime.strptime(startDay, "%Y.%m.%d")
-                endDay = i[3]
-                endDay = datetime.strptime(endDay, "%Y.%m.%d")
-            t = pd.date_range(start=startDay, end=endDay, freq="D")
-            d = []
-            for x in t:
-                for a in str(i[4]):
-                    if a == ".":
-                        continue
-                    else:
-                        c = int(a) - 1
-                    if x.weekday() == c:
-                        d.append(x)
-            #  d 列表合集完成 下面依次处理合集 d列表包含一条状态里的所有日期
-            d_list = [datetime.date(x).month for x in d]
-            for d_month in range(1, 13): # 遍历第1-12月
-                if d_list.count(d_month) == 0:  # 如果每个月的数字是0，就忽略
-                    continue
-                else:
-                    d_1 = []
-                    for x_1 in d:
-                        if datetime.date(x_1).month == d_month:
-                            d_1.append(x_1)
-                    month_main(d_1, d_month, i[2], i[6])  # 把参数依次传入 第一个是包含了该月的所有日期的列表，第二个是月份数字 传入航班号，传入该航班的状态
-                    #  进行月份处理
-            for datetime_everyday in d:
-                #  把D列表里的每一个日期都依次遍历，然后开始处理
-                everyday = str(datetime_everyday.weekday()+1)
-                #  这个是班期
-                if i[6] == "取消":
-                    # 锁定航班号这一列里的内容等于你正在更改的这条数据里的航班号
-                    # 同时满足所有空白列里的数字先转换成字符串，看字符串是否包含这个班期的
-                    # 满足上述条件后，因为是取消，所以转成0
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 0
-                elif i[6] == "取前":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                        time_calculate.航站 == '航站2' ), datetime_everyday] = 0.5
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站1'), datetime_everyday] = 0
-                elif i[6] == "取后":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站2'), datetime_everyday] = 0.5
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站3'), datetime_everyday] = 0
-                elif i[6] == "拉直":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站2'), datetime_everyday] = 0
-                elif i[6] == "还原":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 1
-                #  分成取消、取前、取后、拉直等一系列情况
+        else:
+            d_1 = []
+            for x_1 in d:
+                if datetime.date(x_1).month == d_month:
+                    d_1.append(x_1)
+            month_main(d_1, d_month, i[2], i[6])
+    return d
+    pass
+def time_calulate_row_single(i:object, d:object, time_calculate:object):
+    for datetime_everyday in d:
+        everyday = str(datetime_everyday.weekday() + 1)
+        if i[6] == "取消":
+            time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
+                time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 0
+        elif i[6] == "取前":
+            time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
+                time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
+                                       time_calculate.航站 == '航站2'), datetime_everyday] = 0.5
+            time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
+                time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
+                                       time_calculate.航站 == '航站1'), datetime_everyday] = 0
+        elif i[6] == "取后":
+            time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
+                time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
+                                       time_calculate.航站 == '航站2'), datetime_everyday] = 0.5
+            time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
+                time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
+                                       time_calculate.航站 == '航站3'), datetime_everyday] = 0
+        elif i[6] == "拉直":
+            time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
+                time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
+                                       time_calculate.航站 == '航站2'), datetime_everyday] = 0
+        elif i[6] == "还原":
+            time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
+                time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 1
+    return time_calculate
+
+def main():
+    time_calculate = pd.read_excel('/Users/ze/Desktop/23S执行率计算表.xlsx', sheet_name='时刻')
+    time_calculate[['班期']] = time_calculate[['班期']].astype(str)
+    for i in rng.value[1:]:  # 遍历从第二行开始的每一行，到最后一行
+        if i[2][0:6] not in flight_list:
+            print(i[2][0:6] + '航班信息不在时刻表里，请注意是否需要更新正班表')
+            continue
+        if len(i[2]) <= 6:  # 航班号类似GJ8888
+            d = handle_row(i)
+            time_calculate = time_calulate_row_single(i, d, time_calculate)
         elif len(i[2]) == 8:
-            # 当航班号出现CA1777/8这样的形式，字符串长度变成了8，就要进行拆分
-            if len(i[3]) > 10:  # 日期拆分
-                startDay = i[3].split('-')[0]
-                startDay = datetime.strptime(startDay, "%Y.%m.%d")
-                endDay = i[3].split('-')[1]
-                year = startDay.year
-                if len(endDay) <= 5:  # 出现日期类似3.12，却没有加上年的后半部分
-                    endDay = str(year)+str(".")+endDay
-                    endDay = datetime.strptime(endDay, "%Y.%m.%d")
-                elif len(endDay) >= 6:
-                    endDay = datetime.strptime(endDay, "%Y.%m.%d")
-            elif len(i[3]) <= 10:
-                startDay = i[3]
-                startDay = datetime.strptime(startDay, "%Y.%m.%d")
-                endDay = i[3]
-                endDay = datetime.strptime(endDay, "%Y.%m.%d")
-            t = pd.date_range(start=startDay, end=endDay, freq="D")
-            d = []
-            for x in t:
-                for a in str(i[4]):
-                    if a == ".":
-                        continue
-                    else:
-                        c = int(a) - 1
-                    if x.weekday() == c:
-                        d.append(x)
-            d_list = [datetime.date(x).month for x in d]
-            for d_month in range(1, 13):
-                if d_list.count(d_month) == 0:  # 如果每个月的数字是0，就忽略
-                    continue
-                else:
-                    d_1 = []
-                    for x_1 in d:
-                        if datetime.date(x_1).month == d_month:
-                            d_1.append(x_1)
-                    month_main(d_1, d_month, i[2], i[6])
-            for datetime_everyday in d:
-                everyday = str(datetime_everyday.weekday()+1)
-                if i[6] == "取消":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 0
-                elif i[6] == "取前":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                        time_calculate.航站 == '航站2' ), datetime_everyday] = 0.5
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站1'), datetime_everyday] = 0
-                elif i[6] == "取后":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站2'), datetime_everyday] = 0.5
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站3'), datetime_everyday] = 0
-                elif i[6] == "拉直":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站2'), datetime_everyday] = 0
-                elif i[6] == "还原":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 1
+            d = handle_row(i)
+            time_calculate = time_calulate_row_single(i, d, time_calculate)
             for datetime_everyday in d:
                 everyday = str(datetime_everyday.weekday()+1)
                 if i[6] == "取消":
@@ -186,68 +121,8 @@ def main():
                     time_calculate.loc[(time_calculate.航班号 == i[2][0:5]+i[2][7]) & (
                         time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 1
         elif len(i[2]) == 9:
-            # 当航班号出现CA1769/70这样的形式，字符串长度变成了8，就要进行拆分
-            if len(i[3]) > 10:  # 日期拆分
-                startDay = i[3].split('-')[0]
-                startDay = datetime.strptime(startDay, "%Y.%m.%d")
-                endDay = i[3].split('-')[1]
-                year = startDay.year
-                if len(endDay) <= 5:  # 出现日期类似3.12，却没有加上年的后半部分
-                    endDay = str(year)+str(".")+endDay
-                    endDay = datetime.strptime(endDay, "%Y.%m.%d")
-                elif len(endDay) >= 6:
-                    endDay = datetime.strptime(endDay, "%Y.%m.%d")
-            elif len(i[3]) <= 10:
-                startDay = i[3]
-                startDay = datetime.strptime(startDay, "%Y.%m.%d")
-                endDay = i[3]
-                endDay = datetime.strptime(endDay, "%Y.%m.%d")
-            t = pd.date_range(start=startDay, end=endDay, freq="D")
-            d = []
-            for x in t:
-                for a in str(i[4]):
-                    if a == ".":
-                        continue
-                    else:
-                        c = int(a) - 1
-                    if x.weekday() == c:
-                        d.append(x)
-            d_list = [datetime.date(x).month for x in d]
-            for d_month in range(1, 13):
-                if d_list.count(d_month) == 0:  # 如果每个月的数字是0，就忽略
-                    continue
-                else:
-                    d_1 = []
-                    for x_1 in d:
-                        if datetime.date(x_1).month == d_month:
-                            d_1.append(x_1)
-                    month_main(d_1, d_month, i[2], i[6])
-            for datetime_everyday in d:
-                everyday = str(datetime_everyday.weekday()+1)
-                if i[6] == "取消":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 0
-                elif i[6] == "取前":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                        time_calculate.航站 == '航站2' ), datetime_everyday] = 0.5
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站1'), datetime_everyday] = 0
-                elif i[6] == "取后":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站2'), datetime_everyday] = 0.5
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站3'), datetime_everyday] = 0
-                elif i[6] == "拉直":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站2'), datetime_everyday] = 0
-                elif i[6] == "还原":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 1
+            d = handle_row(i)
+            time_calculate = time_calulate_row_single(i, d, time_calculate)
             for datetime_everyday in d:
                 everyday = str(datetime_everyday.weekday()+1)
                 if i[6] == "取消":
@@ -274,71 +149,9 @@ def main():
                 elif i[6] == "还原":
                     time_calculate.loc[(time_calculate.航班号 == i[2][0:4]+i[2][7:9]) & (
                         time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 1
-
-
         elif len(i[2]) == 10:
-            # 当航班号出现CA1799/800这样的形式，字符串长度变成了8，就要进行拆分
-            if len(i[3]) > 10:  # 日期拆分
-                startDay = i[3].split('-')[0]
-                startDay = datetime.strptime(startDay, "%Y.%m.%d")
-                endDay = i[3].split('-')[1]
-                year = startDay.year
-                if len(endDay) <= 5:  # 出现日期类似3.12，却没有加上年的后半部分
-                    endDay = str(year)+str(".")+endDay
-                    endDay = datetime.strptime(endDay, "%Y.%m.%d")
-                elif len(endDay) >= 6:
-                    endDay = datetime.strptime(endDay, "%Y.%m.%d")
-            elif len(i[3]) <= 10:
-                startDay = i[3]
-                startDay = datetime.strptime(startDay, "%Y.%m.%d")
-                endDay = i[3]
-                endDay = datetime.strptime(endDay, "%Y.%m.%d")
-            t = pd.date_range(start=startDay, end=endDay, freq="D")
-            d = []
-            for x in t:
-                for a in str(i[4]):
-                    if a == ".":
-                        continue
-                    else:
-                        c = int(a) - 1
-                    if x.weekday() == c:
-                        d.append(x)
-            d_list = [datetime.date(x).month for x in d]
-            for d_month in range(1, 13):
-                if d_list.count(d_month) == 0:  # 如果每个月的数字是0，就忽略
-                    continue
-                else:
-                    d_1 = []
-                    for x_1 in d:
-                        if datetime.date(x_1).month == d_month:
-                            d_1.append(x_1)
-                    month_main(d_1, d_month, i[2], i[6])
-            for datetime_everyday in d:
-                everyday = str(datetime_everyday.weekday()+1)
-                if i[6] == "取消":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 0
-                elif i[6] == "取前":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                        time_calculate.航站 == '航站2' ), datetime_everyday] = 0.5
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站1'), datetime_everyday] = 0
-                elif i[6] == "取后":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站2'), datetime_everyday] = 0.5
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站3'), datetime_everyday] = 0
-                elif i[6] == "拉直":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站2'), datetime_everyday] = 0
-                elif i[6] == "还原":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 1
+            d = handle_row(i)
+            time_calculate = time_calulate_row_single(i, d, time_calculate)
             for datetime_everyday in d:
                 everyday = str(datetime_everyday.weekday()+1)
                 if i[6] == "取消":
@@ -365,71 +178,9 @@ def main():
                 elif i[6] == "还原":
                     time_calculate.loc[(time_calculate.航班号 == i[2][0:3]+i[2][7:10]) & (
                         time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 1
-
-
         elif len(i[2]) == 11:
-            # 当航班号出现CA1799/1800这样的形式，字符串长度变成了8，就要进行拆分
-            if len(i[3]) > 10:  # 日期拆分
-                startDay = i[3].split('-')[0]
-                startDay = datetime.strptime(startDay, "%Y.%m.%d")
-                endDay = i[3].split('-')[1]
-                year = startDay.year
-                if len(endDay) <= 5:  # 出现日期类似3.12，却没有加上年的后半部分
-                    endDay = str(year)+str(".")+endDay
-                    endDay = datetime.strptime(endDay, "%Y.%m.%d")
-                elif len(endDay) >= 6:
-                    endDay = datetime.strptime(endDay, "%Y.%m.%d")
-            elif len(i[3]) <= 10:
-                startDay = i[3]
-                startDay = datetime.strptime(startDay, "%Y.%m.%d")
-                endDay = i[3]
-                endDay = datetime.strptime(endDay, "%Y.%m.%d")
-            t = pd.date_range(start=startDay, end=endDay, freq="D")
-            d = []
-            for x in t:
-                for a in str(i[4]):
-                    if a == ".":
-                        continue
-                    else:
-                        c = int(a) - 1
-                    if x.weekday() == c:
-                        d.append(x)
-            d_list = [datetime.date(x).month for x in d]
-            for d_month in range(1, 13):
-                if d_list.count(d_month) == 0:  # 如果每个月的数字是0，就忽略
-                    continue
-                else:
-                    d_1 = []
-                    for x_1 in d:
-                        if datetime.date(x_1).month == d_month:
-                            d_1.append(x_1)
-                    month_main(d_1, d_month, i[2], i[6])
-            for datetime_everyday in d:
-                everyday = str(datetime_everyday.weekday()+1)
-                if i[6] == "取消":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 0
-                elif i[6] == "取前":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                        time_calculate.航站 == '航站2' ), datetime_everyday] = 0.5
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站1'), datetime_everyday] = 0
-                elif i[6] == "取后":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站2'), datetime_everyday] = 0.5
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站3'), datetime_everyday] = 0
-                elif i[6] == "拉直":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)) & (
-                                               time_calculate.航站 == '航站2'), datetime_everyday] = 0
-                elif i[6] == "还原":
-                    time_calculate.loc[(time_calculate.航班号 == i[2][0:6]) & (
-                        time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 1
+            d = handle_row(i)
+            time_calculate = time_calulate_row_single(i, d, time_calculate)
             for datetime_everyday in d:
                 everyday = str(datetime_everyday.weekday()+1)
                 if i[6] == "取消":
@@ -456,7 +207,7 @@ def main():
                 elif i[6] == "还原":
                     time_calculate.loc[(time_calculate.航班号 == i[2][0:2]+i[2][7:11]) & (
                         time_calculate['班期'].fillna(" ").str.contains(everyday, na=False)), datetime_everyday] = 1
-    time_calculate_list = np.array(time_calculate.iloc[1:, 15:]).tolist()
+    time_calculate_list = np.array(time_calculate.iloc[1:, 16:]).tolist()
     worksheet1.range('P3').value = time_calculate_list
     workbook.save()
     read_result()
@@ -465,7 +216,7 @@ def month_main(d_list, month, flightnumber, statement):
     worksheet_month = workbook.sheets[month]
     flight_list_month = worksheet_month.range('A3').expand('down').value  # 时刻正表里的航班号，保持更新
     time_list_month = workbook.sheets[month].range('A1').expand('table').value[0][4:-2]  # 时刻表里的时间日期，换季了再更新！平时不要动
-    if len(flightnumber) <= 6:  # 航班号类似CA8888
+    if len(flightnumber) <= 6:  # 航班号类似GJ8888
         if flightnumber in flight_list_month:
             for b in d_list:
                 cell = worksheet_month.range('D2').offset(column_offset=time_list_month.index(b) + 1,
@@ -587,7 +338,6 @@ def month_main(d_list, month, flightnumber, statement):
                     cell.value = ['X']
         else:
             print(flightnumber)
-
 def read_result():
     last_eight_row = workbook.sheets['总汇'].range('J1').expand('table').value
     SanDaChang_amont = [last_eight_row[1][1], last_eight_row[1][3], last_eight_row[1][5], last_eight_row[1][7],
@@ -618,7 +368,7 @@ def read_result():
     for i in rng.value[1:]:  # 遍历从第二行开始的每一行，到最后一行
         if i[2][0:6] not in flight_list:
             continue
-        if len(i[2]) <= 6:  # 航班号类似CA8888
+        if len(i[2]) <= 6:  # 航班号类似GJ8888
             if len(i[3]) > 10:  # 日期拆分
                 startDay = i[3].split('-')[0]
                 startDay = datetime.strptime(startDay, "%Y.%m.%d")
@@ -900,34 +650,6 @@ def read_result():
     else:
         print("以上" + "、".join(list3) + "执行率低于80%，存在丢失时刻风险")  # 较低风险的预警，存在YUJING_eighty和list3中
 
-def yufei_to_main():
-    workbook1 = app.books.open('/Users/ze/Desktop/1.xlsx')
-    df_list = workbook1.sheets['CDC'].range('A1').expand('table').value
-    df_list = df_list[1:]
-    all_list = []
-    for index, row in enumerate(df_list):
-        if row[0] == df_list[index-1][0]:
-            if row[4] is None:
-                all_list[-1][5] = all_list[-1][5] + row[1]
-                all_list[-2][5] = all_list[-2][5] + row[1]
-            else:
-                all_list[-1][5] = all_list[-1][5] + row[1]
-                all_list[-2][5] = all_list[-2][5] + row[1]
-                all_list[-3][5] = all_list[-3][5] + row[1]
-            continue
-        else:
-            if row[4] is None:
-                air_line = "{0}-{1}".format(row[2], row[3])
-                all_list.append([row[0], air_line, None, "航站1", row[2], row[1]])
-                all_list.append([row[0], air_line, None, "航站2", row[3], row[1]])
-            else:
-                air_line = "{0}-{1}-{2}".format(row[2], row[3], row[4])
-                all_list.append([row[0], air_line, None, "航站1", row[2], row[1]])
-                all_list.append([row[0], air_line, None, "航站2", row[3], row[1]])
-                all_list.append([row[0], air_line, None, "航站3", row[4], row[1]])
-    worksheet1.range('A3').value = all_list
-    workbook.save()
-
 def FOC_main():
     # 抓foc.xlsx 的数据，每日更新。foc的数据要更新，地址需要改
     df = pd.read_excel('/Users/ze/Desktop/foc.xlsx', sheet_name=0, header=1, usecols=[0, 1, 3, 9, 24, 25])
@@ -964,7 +686,7 @@ def FOC_main():
     for date_1 in foc_value.keys():
         d_month = datetime.date(date_1).month
         # 月度数据处理
-        part2(d_month, date_1, foc_value[date_1])
+        foc_month_main(d_month, date_1, foc_value[date_1])
         time_calculate[date_1] = time_calculate[date_1].map({1: 0, 0.5: 0, 0: 0})  # 替换每一列中的值为0
         for b in foc_value[date_1].keys():
             if b not in flight_list:
@@ -1001,33 +723,7 @@ def FOC_main():
     time_calculate_list = np.array(time_calculate.iloc[1:, 15:]).tolist()
     worksheet1.range('P3').value = time_calculate_list
     workbook.save()
-
 def foc_month_main(month, date_1, dict):
-    month = str(month) + "月"
-    worksheet_month = workbook.sheets[month]
-    flight_list_month = worksheet_month.range('A3').expand('down').value  # 月度航班号表
-    time_list_month = workbook.sheets[month].range('A1').expand('table').value[0][4:-2] # 月度时间表
-    # 列表更替，将x更换到每一个空格里，记住，长度可能有问题，len(flight_list_month)，这个是要更新的
-    X_list= ['X' if i is not None else i for i in worksheet_month.range((3, time_list_month.index(date_1)+5),(len(flight_list_month)-6, time_list_month.index(date_1)+5)).value]
-    #整个竖着的列全部替换成x
-    worksheet_month.range((3, time_list_month.index(date_1)+5)).options(transpose=True).value = X_list
-    # 依次豁免
-    for b in dict.keys():
-        if b not in flight_list_month:
-            print(b)
-            continue
-        cell = worksheet_month.range('D2').offset(column_offset=time_list_month.index(date_1) + 1,  # 右偏移n+1个格子，下偏移n+1
-                                                  row_offset=flight_list_month.index(b) + 1)  # 锁
-        cell3 = worksheet_month.range('D2').offset(column_offset=-2,
-                                              row_offset=flight_list_month.index(b) + 1).value
-
-        if cell3.count('-') == 1:  # 意味着这个是点对点航班，没有第三段
-            cell.value = [1]
-        else:
-            if dict[b][0] == 2:
-                cell.value = [1]
-
-def part2(month, date_1, dict):
     month = str(month) + "月"
     maintable = pd.read_excel('/Users/ze/Desktop/23S执行率计算表.xlsx', sheet_name=month)
     maintable[date_1] = maintable[date_1].map({1: "X", "X": "X"})  # 替换每一列中的值为0
@@ -1044,35 +740,32 @@ def part2(month, date_1, dict):
     maintable_list = np.array(maintable[date_1]).tolist()[1:]
     workbook.sheets[month].range((3, maintable.columns.get_loc(date_1)+1)).options(transpose=True).value = maintable_list
 
-
-def part1():
-    time_calculate = pd.read_excel('/Users/ze/Desktop/23S执行率计算表.xlsx', sheet_name=1)
-    maintable = pd.read_excel('/Users/ze/Desktop/23S执行率计算表.xlsx', sheet_name=2)
-    # data1 = maintable.iloc[9:12, 9:44]
-    citylist = maintable.iloc[9, 9:46].tolist()
-    startday = time_calculate.columns.get_loc(datetime(2023, 4, 16))
-    endday = time_calculate.columns.get_loc(datetime(2023, 6, 10)) + 1
-    nowday = time_calculate.columns.get_loc(datetime(datetime.now().year, datetime.now().month, datetime.now().day)) + 1
-    value_list = [[], []]
-    for index, city in enumerate(citylist):
-        if index >= 1:
-            time_calculate.update(time_calculate.loc[(time_calculate.航站名称 == city)].loc[(time_calculate.航线.str.count('-') == 2) & (time_calculate.航站 == '航站2')].iloc[:,15:].apply(lambda x: x*2))
-            slot_use_airport = time_calculate.loc[(time_calculate.航站名称 == city)].iloc[:, startday:endday].sum().sum()
-            slot_time = time_calculate.loc[(time_calculate.航站名称 == city)].iloc[:, startday:endday].count().sum()+time_calculate.loc[(time_calculate.航站名称 == city)].loc[(time_calculate.航线.str.count('-') == 2) & (time_calculate.航站 == '航站2')].iloc[:, startday:endday].count().sum()
-            # schedule_slot_time = (np.array(maintable.iloc[8, 10:46]) * 8).tolist()
-            schedule_slot_time = (np.array(maintable.iloc[8, index+9]) * 8).tolist()
-            city_percent = slot_use_airport/schedule_slot_time
-            nowday_slot_use_airport = time_calculate.loc[(time_calculate.航站名称 == city)].iloc[:,
-                               startday:nowday].sum().sum()
-            nowday_slot_time = time_calculate.loc[(time_calculate.航站名称 == city)].iloc[:, startday:nowday].count().sum() + \
-                        time_calculate.loc[(time_calculate.航站名称 == city)].loc[
-                            (time_calculate.航线.str.count('-') == 2) & (time_calculate.航站 == '航站2')].iloc[:,
-                        startday:nowday].count().sum()
-            nowday_slot_time = time_calculate.loc[(time_calculate.航站2) == city].count().sum()
-            nowday_city_percent = nowday_slot_use_airport / schedule_slot_time
-            value_list[0].append(city_percent)
-            value_list[1].append(nowday_city_percent)
-    workbook.sheets['总汇'].range('K12').value = value_list
+def yufei_to_main():
+    workbook1 = app.books.open('/Users/ze/Desktop/1.xlsx')
+    df_list = workbook1.sheets['CDC'].range('A1').expand('table').value
+    df_list = df_list[1:]
+    all_list = []
+    for index, row in enumerate(df_list):
+        if row[0] == df_list[index-1][0]:
+            if row[4] is None:
+                all_list[-1][5] = all_list[-1][5] + row[1]
+                all_list[-2][5] = all_list[-2][5] + row[1]
+            else:
+                all_list[-1][5] = all_list[-1][5] + row[1]
+                all_list[-2][5] = all_list[-2][5] + row[1]
+                all_list[-3][5] = all_list[-3][5] + row[1]
+            continue
+        else:
+            if row[4] is None:
+                air_line = "{0}-{1}".format(row[2], row[3])
+                all_list.append([row[0], air_line, None, "航站1", row[2], row[1]])
+                all_list.append([row[0], air_line, None, "航站2", row[3], row[1]])
+            else:
+                air_line = "{0}-{1}-{2}".format(row[2], row[3], row[4])
+                all_list.append([row[0], air_line, None, "航站1", row[2], row[1]])
+                all_list.append([row[0], air_line, None, "航站2", row[3], row[1]])
+                all_list.append([row[0], air_line, None, "航站3", row[4], row[1]])
+    worksheet1.range('A3').value = all_list
     workbook.save()
 
 main()
